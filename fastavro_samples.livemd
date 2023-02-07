@@ -1,0 +1,136 @@
+# FastAvro Samples
+
+```elixir
+Mix.install(
+  [
+    {:fastavro, path: "/media/ramon/f9abf31d-9e05-4c6f-9dec-9bb9c0612a74/development/fastavro"},
+    {:vega_lite, "~> 0.1.6"},
+    {:kino, "~> 0.8.1"},
+    {:benchee, "~> 1.1"},
+    {:benchee_html, "~> 1.0"}
+  ],
+  config: [nx: [default_backend: EXLA.Backend]]
+)
+```
+
+## Load Data Files
+
+We start by reading some files from filesystem to get the data needed for
+the following test runs.
+
+We will need the avro schema for our test message and the avro raw data for a sample message.
+
+```elixir
+{:ok, schema} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
+avro_data = File.read!("bench/lte_202210.avro")
+```
+
+## Decode Message
+
+First thing we wiil want to try is to decode the avro_data into an intermediate representation by using the schema as template for data interpretation.
+
+```elixir
+msg = FastAvro.decode_avro_datum(avro_data, schema)
+```
+
+We can convert from this intermediate representation into an Elixir map.
+
+```elixir
+FastAvro.to_map(msg)
+```
+
+We can use Kino to construct a table from the avro map.
+
+```elixir
+[
+  FastAvro.to_map(msg)
+  |> Enum.reject(fn {_, v} -> v == 0 || v == "" end)
+]
+|> Kino.DataTable.new()
+```
+
+## Get field from message
+
+We can read just one field from the intermediate representation and get its value.
+
+```elixir
+FastAvro.get_avro_value(msg, "Dest_TAC")
+```
+
+Is also possible to read the field from the raw representation without generate the intermediate representation.
+
+```elixir
+FastAvro.get_raw_value(avro_data, schema, "Dest_TAC")
+```
+
+It's even possible to read multiple values from the given avro_data using the schema.
+
+```elixir
+FastAvro.get_raw_values(avro_data, schema, [
+  "Dest_TAC",
+  "Event_Start",
+  "Event_Stop"
+])
+```
+
+We can combine this with encode function to extract data and reencode message.
+
+```elixir
+{:ok, new_schema} =
+  FastAvro.read_schema("""
+  {
+    "type": "record",
+    "name": "small",
+    "fields": [
+      {"name": "tac", "type": "int"},
+      {"name": "from", "type": "string"},
+      {"name": "to", "type": "string"}
+    ]
+  }
+  """)
+```
+
+```elixir
+avro_data
+|> FastAvro.get_raw_values(schema, [
+  "Dest_TAC",
+  "Event_Start",
+  "Event_Stop"
+])
+|> Map.new(fn
+  {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
+  {"Event_Start", <<_::binary-size(9), v::binary>>} -> {"from", v}
+  {"Event_Stop", <<_::binary-size(9), v::binary>>} -> {"to", v}
+end)
+|> FastAvro.encode_avro_datum(new_schema)
+|> FastAvro.decode_avro_datum(new_schema)
+|> FastAvro.to_map()
+```
+
+```elixir
+defmodule Tests do
+  def recode(avro_data, schema, new_schema) do
+    avro_data
+    |> FastAvro.get_raw_values(schema, ["Dest_TAC", "Event_Start", "Event_Stop"])
+    |> Map.new(fn
+      {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
+      {"Event_Start", <<_::binary-size(9), v::binary>>} -> {"from", v}
+      {"Event_Stop", <<_::binary-size(9), v::binary>>} -> {"to", v}
+    end)
+    |> FastAvro.encode_avro_datum(new_schema)
+  end
+end
+```
+
+```elixir
+Benchee.run(
+  %{
+    "sample" => fn -> Tests.recode(avro_data, schema, new_schema) end
+  },
+  warmup: 2,
+  time: 20,
+  parallel: 1
+)
+
+nil
+```
