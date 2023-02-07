@@ -1,0 +1,17 @@
+[package]
+name = "fastavro"
+version = "0.1.0"
+authors = ["ramonpin"]
+edition = "2021"
+
+[lib]
+name = "fastavro"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.27.0"
+
+[dependencies.apache-avro]
+version = "0.14.0"
+features = ["snappy"]
