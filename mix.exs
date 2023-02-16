@@ -4,7 +4,7 @@ defmodule FastAvro.MixProject do
   def project do
     [
       app: :fastavro,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -35,8 +35,7 @@ defmodule FastAvro.MixProject do
       {:rustler, "~> 0.27.0"},
       {:jason, "~> 1.4"},
       {:benchee, "~> 1.1.0", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.29.1", only: [:dev, :test], runtime: false},
-      {:livebook_helpers, ">= 0.0.0", only: [:docs, :dev]}
+      {:ex_doc, "~> 0.29.1", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -55,7 +54,7 @@ defmodule FastAvro.MixProject do
         "mix.exs",
         "README*",
         "LICENSE*",
-        "native",
+        "native"
       ],
       maintainers: ["Ramón Pin"],
       licenses: ["MIT"],
