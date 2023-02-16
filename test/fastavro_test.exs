@@ -32,7 +32,7 @@ defmodule FastavroTest do
 
   @avro_person <<8, 108, 117, 105, 115, 50, 0, 0, 0, 0, 0, 0, 30, 64>>
 
-  test "A schema can be read and fields extracted" do
+  test "a schema can be read and fields extracted" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
     assert is_reference(schema)
 
@@ -40,7 +40,7 @@ defmodule FastavroTest do
     assert fields == %{"age" => "Int", "name" => "String", "score" => "Double"}
   end
 
-  test "A map can be encoded with a compatible schema" do
+  test "a map can be encoded with a compatible schema" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
     avro_datum = FastAvro.encode_avro_datum(@map_person, schema)
 
@@ -48,17 +48,17 @@ defmodule FastavroTest do
     assert avro_datum == @avro_person
   end
 
-  test "An avro datum can be decoded with a compatible schema" do
+  test "an avro datum can be decoded with a compatible schema" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
-    avro_record = FastAvro.decode_avro_datum(@avro_person, schema)
+    {:ok, avro_record} = FastAvro.decode_avro_datum(@avro_person, schema)
 
     assert is_reference(avro_record)
     assert FastAvro.to_map(avro_record) == @map_person
   end
 
-  test "Fields can be get from an avro record" do
+  test "fields can be get from an avro record" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
-    avro_record = FastAvro.decode_avro_datum(@avro_person, schema)
+    {:ok, avro_record} = FastAvro.decode_avro_datum(@avro_person, schema)
 
     assert FastAvro.get_avro_value(avro_record, "name") == "luis"
     assert FastAvro.get_avro_value(avro_record, "age") == 25
@@ -66,7 +66,7 @@ defmodule FastavroTest do
     assert FastAvro.get_avro_value(avro_record, "wrong") == :field_not_found
   end
 
-  test "Fields can be get from avro row data and compatible schema" do
+  test "fields can be get from avro row data and compatible schema" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
 
     assert FastAvro.get_raw_value(@avro_person, schema, "name") == "luis"
@@ -75,7 +75,7 @@ defmodule FastavroTest do
     assert FastAvro.get_raw_value(@avro_person, schema, "wrong") == :field_not_found
   end
 
-  test "Several fields can be get from avro row data and compatible schema at once" do
+  test "several fields can be get from avro row data and compatible schema at once" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
 
     assert FastAvro.get_raw_values(@avro_person, schema, ["age", "name"]) == %{
@@ -84,7 +84,7 @@ defmodule FastavroTest do
            }
   end
 
-  test "Functions can be piped to reencode data" do
+  test "functions can be piped to reencode data" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
     {:ok, new_schema} = FastAvro.read_schema(@person_new_schema)
 
@@ -100,6 +100,7 @@ defmodule FastavroTest do
       end)
       |> FastAvro.encode_avro_datum(new_schema)
       |> FastAvro.decode_avro_datum(new_schema)
+      |> elem(1)
       |> FastAvro.to_map()
 
     assert new_avro_person == %{"years" => 1995, "score_normalized" => 75}

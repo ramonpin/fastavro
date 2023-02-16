@@ -17,6 +17,7 @@ mod atoms {
         ok,
         bad_avro_schema,
         field_not_found,
+        incompatible_avro_schema,
         not_a_record,
         wrong_type,
     }
@@ -103,7 +104,7 @@ pub fn create_msg<'a>(
             Schema::Long => record.put::<i64>(&k, v.decode().unwrap()),
             Schema::Double => record.put::<f64>(&k, v.decode().unwrap()),
             Schema::String => record.put::<String>(&k, v.decode().unwrap()),
-            _ => panic!("Unkown type"),
+            _ => return error_result(atoms::wrong_type()),
         }
     }
 
@@ -192,14 +193,20 @@ fn decode_msg<'a>(
 fn decode_avro_datum(
     avro_data: Term,
     schema_resource: ResourceArc<SchemaResource>,
-) -> ResourceArc<MsgResource> {
+) -> ResultResource<MsgResource> {
     let schema = &schema_resource.schema;
     let mut bytes = Binary::from_iolist(avro_data).unwrap().as_slice();
 
-    let value = from_avro_datum(schema, &mut bytes, None).unwrap();
-    let avro_msg = ResourceArc::new(MsgResource { msg: value });
+    let datum = from_avro_datum(schema, &mut bytes, Some(schema));
 
-    return avro_msg;
+    match datum {
+        Ok(value) => {
+            let avro_msg = ResourceArc::new(MsgResource { msg: value });
+            return ok_result(avro_msg);
+        }
+
+        Err(_) => error_result(atoms::incompatible_avro_schema()),
+    }
 }
 
 #[rustler::nif]
@@ -241,12 +248,11 @@ fn get_avro_value<'a>(
                     return get_value_term(env, value);
                 }
             }
+            return atoms::field_not_found().encode(env);
         }
 
-        _ => panic!("Only records supported"),
+        _ => return atoms::not_a_record().encode(env),
     }
-
-    return atoms::field_not_found().encode(env);
 }
 
 #[rustler::nif]
@@ -258,21 +264,26 @@ fn get_raw_value<'a>(
 ) -> Term<'a> {
     let schema = &schema_resource.schema;
     let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
-    let value = from_avro_datum(schema, &mut bytes, None).unwrap();
+    let datum = from_avro_datum(schema, &mut bytes, Some(schema));
 
-    match value {
-        Value::Record(fields) => {
-            for (field_name, value) in fields {
-                if field_name.to_string() == name {
-                    return get_value_term(env, &value);
+    match datum {
+        Ok(value) => match value {
+            Value::Record(fields) => {
+                for (field_name, value) in fields {
+                    if field_name.to_string() == name {
+                        return get_value_term(env, &value);
+                    }
                 }
+                return atoms::field_not_found().encode(env);
             }
+
+            _ => return atoms::not_a_record().encode(env),
+        },
+
+        Err(_) => {
+            return atoms::incompatible_avro_schema().encode(env);
         }
-
-        _ => panic!("Only records supported"),
     }
-
-    return atoms::field_not_found().encode(env);
 }
 
 #[rustler::nif]

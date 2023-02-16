@@ -30,23 +30,13 @@ avro_data = File.read!("bench/lte_202210.avro")
 First thing we wiil want to try is to decode the avro_data into an intermediate representation by using the schema as template for data interpretation.
 
 ```elixir
-msg = FastAvro.decode_avro_datum(avro_data, schema)
+{:ok, msg} = FastAvro.decode_avro_datum(avro_data, schema)
 ```
 
 We can convert from this intermediate representation into an Elixir map.
 
 ```elixir
 FastAvro.to_map(msg)
-```
-
-We can use Kino to construct a table from the avro map.
-
-```elixir
-[
-  FastAvro.to_map(msg)
-  |> Enum.reject(fn {_, v} -> v == 0 || v == "" end)
-]
-|> Kino.DataTable.new()
 ```
 
 ## Get field from message
@@ -104,6 +94,7 @@ avro_data
 end)
 |> FastAvro.encode_avro_datum(new_schema)
 |> FastAvro.decode_avro_datum(new_schema)
+|> elem(1)
 |> FastAvro.to_map()
 ```
 
@@ -132,5 +123,81 @@ Benchee.run(
   parallel: 1
 )
 
+nil
+```
+
+## Incompatible schema and return errors
+
+```elixir
+schema = """
+{
+    "namespace": "test.avro",
+    "type": "record",
+    "name": "test_record",
+    "fields": [
+        
+        {
+            "name": "string_field",
+            "type": "string"
+        },
+        {
+            "name": "double_field",
+            "type": "double"
+        },
+        {
+            "name": "second_string",
+            "type": "string"
+        }
+    ]
+}
+"""
+```
+
+```elixir
+schema_wrong = """
+{
+    "namespace": "test.avro",
+    "type": "record",
+    "name": "test_record",
+    "fields": [
+        {
+            "name": "int_field",
+            "type": "int"
+        },
+        {
+            "name": "string_field",
+            "type": "string"
+        }
+    ]
+}
+"""
+```
+
+```elixir
+{:ok, avro_schema} = FastAvro.read_schema(schema)
+
+msg = %{
+  "string_field" => "prueba",
+  "double_field" => 22.5,
+  "second_string" => "otra"
+}
+
+avro_msg = FastAvro.encode_avro_datum(msg, avro_schema)
+```
+
+```elixir
+{:ok, wrong_avro_schema} = FastAvro.read_schema(schema_wrong)
+
+FastAvro.decode_avro_datum(avro_msg, wrong_avro_schema)
+```
+
+```elixir
+FastAvro.decode_avro_datum(avro_msg, avro_schema)
+```
+
+```elixir
+IO.inspect(FastAvro.get_raw_value(avro_msg, avro_schema, "string_field"))
+IO.inspect(FastAvro.get_raw_value(avro_msg, avro_schema, "wrong_field"))
+IO.inspect(FastAvro.get_raw_value(avro_msg, wrong_avro_schema, "string_field"))
 nil
 ```

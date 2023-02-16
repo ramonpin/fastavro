@@ -68,7 +68,7 @@ defmodule FastAvro do
   In order to interoperate with the rest of the module the schema must define a
   'record' with only primitive 'string', 'int', 'long' and 'double' fields.
   """
-  @spec read_schema(String.t()) :: schema
+  @spec read_schema(String.t()) :: {:ok, schema} | {:error, atom}
   def read_schema(_json), do: error()
 
   @doc """
@@ -112,8 +112,8 @@ defmodule FastAvro do
   ## Returns
 
   - `{:ok, avro_record}`: an `avro_record()` reference already populated and ready
-  to be encoded.
-  - `{:error, reason}`: if the schema is not valid.
+    to be encoded.
+  - `{:error, :wrong_type}`: if the schema contains an unknown data type. 
 
   ## Examples
 
@@ -125,7 +125,7 @@ defmodule FastAvro do
 
 
   """
-  @spec create_msg(map, schema) :: avro_record
+  @spec create_msg(map, schema) :: {:ok, avro_record} | {:error, atom}
   def create_msg(_map, _schema), do: error()
 
   @doc """
@@ -155,28 +155,26 @@ defmodule FastAvro do
   def to_map(_msg), do: error()
 
   @doc """
-  Decodes avro data given as a binary using the provided schema. It decodes
-  only raw data without any headers, no schema and no fingerprint.
+    Decodes avro data given as a binary using the provided schema. It decodes
+    only raw data without any headers, no schema and no fingerprint.
 
-  ## Parameters
+    ## Parameters
 
-  - `binary`: valid avro data as a binary
-  - `schema`: a `schema()` reference for a record definition compatible with the
-    data.
+    - `binary`: valid avro data as a binary
+    - `schema`: a `schema()` reference for a record definition compatible with the
+      data.
 
-  ## Returns
+    ## Returns
 
-  If the decoding success it returns an `avro_record()` reference that represents
-  the decoded data and can be used to read fields from.
+    - `{:ok, avro_record()}`: when successfully decoded
+    - `{:error, :incompatible_avro_schema}`: when schema not valid to the decode data.
 
-  At any error it raises an exception.
+    ## Examples
 
-  ## Examples
-
-      iex> FastAvro.decode_avro_datum(avro_data, schema)
-      #Reference<0.2887345315.2965241864.83696>
+        iex> FastAvro.decode_avro_datum(avro_data, schema)
+        {:ok, #Reference<0.2887345315.2965241864.83696>}
   """
-  @spec decode_avro_datum(binary, schema) :: avro_record
+  @spec decode_avro_datum(binary, schema) :: {:ok, avro_record} | {:error, atom}
   def decode_avro_datum(_avro_data, _schema), do: error()
 
   @doc """
@@ -227,13 +225,14 @@ defmodule FastAvro do
   An elixir term representing the value of the field in the avro record.
 
   If the field does not exist in the avro record you get :field_not_found.
+  If the refence is not an avro record you get :not_a_record
 
   ## Examples
 
       iex> FastAvro.get_avro_value(msg, "Dest_TAC")
       "TAC: 1142"
   """
-  @spec get_avro_value(avro_record, Strin.t()) :: term
+  @spec get_avro_value(avro_record, String.t()) :: term
   def get_avro_value(_msg, _name), do: error()
 
   @doc """
@@ -249,7 +248,9 @@ defmodule FastAvro do
 
   An elixir term representing the value of the field in the avro record.
 
-  If the field does not exists in the avro record you get :field_not_found.
+  If the field does not exist in the avro record you get :field_not_found.
+  If the binary is not an avro record you get :not_a_record
+  If the schema is not compatible with the binary you get :incompatible_avro_schema
 
   ## Examples
 
