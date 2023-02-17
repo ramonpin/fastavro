@@ -42,7 +42,7 @@ defmodule FastavroTest do
 
   test "a map can be encoded with a compatible schema" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
-    avro_datum = FastAvro.encode_avro_datum(@map_person, schema)
+    {:ok, avro_datum} = FastAvro.encode_avro_datum(@map_person, schema)
 
     assert is_binary(avro_datum)
     assert avro_datum == @avro_person
@@ -60,19 +60,18 @@ defmodule FastavroTest do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
     {:ok, avro_record} = FastAvro.decode_avro_datum(@avro_person, schema)
 
-    assert FastAvro.get_avro_value(avro_record, "name") == "luis"
-    assert FastAvro.get_avro_value(avro_record, "age") == 25
-    assert FastAvro.get_avro_value(avro_record, "score") == 7.5
-    assert FastAvro.get_avro_value(avro_record, "wrong") == :field_not_found
+    assert {:ok, "luis"} = FastAvro.get_avro_value(avro_record, "name")
+    assert {:ok, 25} = FastAvro.get_avro_value(avro_record, "age") 
+    assert {:ok, 7.5} = FastAvro.get_avro_value(avro_record, "score")
+    assert {:error, :field_not_found} = FastAvro.get_avro_value(avro_record, "wrong")
   end
 
   test "fields can be get from avro row data and compatible schema" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
 
-    assert FastAvro.get_raw_value(@avro_person, schema, "name") == "luis"
-    assert FastAvro.get_raw_value(@avro_person, schema, "age") == 25
-    assert FastAvro.get_raw_value(@avro_person, schema, "score") == 7.5
-    assert FastAvro.get_raw_value(@avro_person, schema, "wrong") == :field_not_found
+    assert {:ok, "luis"} == FastAvro.get_raw_value(@avro_person, schema, "name")
+    assert {:ok, 25} == FastAvro.get_raw_value(@avro_person, schema, "age")
+    assert {:ok, 7.5} = FastAvro.get_raw_value(@avro_person, schema, "score")
   end
 
   test "several fields can be get from avro row data and compatible schema at once" do
@@ -99,6 +98,7 @@ defmodule FastavroTest do
         {"score", v} -> {"score_normalized", trunc(v * 10)}
       end)
       |> FastAvro.encode_avro_datum(new_schema)
+      |> elem(1)
       |> FastAvro.decode_avro_datum(new_schema)
       |> elem(1)
       |> FastAvro.to_map()

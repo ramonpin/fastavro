@@ -155,24 +155,24 @@ defmodule FastAvro do
   def to_map(_msg), do: error()
 
   @doc """
-    Decodes avro data given as a binary using the provided schema. It decodes
-    only raw data without any headers, no schema and no fingerprint.
+  Decodes avro data given as a binary using the provided schema. It decodes
+  only raw data without any headers, no schema and no fingerprint.
 
-    ## Parameters
+  ## Parameters
 
-    - `binary`: valid avro data as a binary
-    - `schema`: a `schema()` reference for a record definition compatible with the
-      data.
+  - `binary`: valid avro data as a binary
+  - `schema`: a `schema()` reference for a record definition compatible with the
+    data.
 
-    ## Returns
+  ## Returns
 
-    - `{:ok, avro_record()}`: when successfully decoded
-    - `{:error, :incompatible_avro_schema}`: when schema not valid to the decode data.
+  - `{:ok, avro_record()}`: when successfully decoded
+  - `{:error, :incompatible_avro_schema}`: when schema not valid to decode data.
 
-    ## Examples
+  ## Examples
 
-        iex> FastAvro.decode_avro_datum(avro_data, schema)
-        {:ok, #Reference<0.2887345315.2965241864.83696>}
+      iex> FastAvro.decode_avro_datum(avro_data, schema)
+      {:ok, #Reference<0.2887345315.2965241864.83696>}
   """
   @spec decode_avro_datum(binary, schema) :: {:ok, avro_record} | {:error, atom}
   def decode_avro_datum(_avro_data, _schema), do: error()
@@ -189,8 +189,11 @@ defmodule FastAvro do
 
   ## Returns
 
-  It returns a binary with the encoded avro representation of the data in
+  - `{:ok, binary}`: binary contains avro representation of the data in
   the map as described by the schema.
+  - `{:error, :wrong_type}`: the schema contains an unsupported data type
+  - `{:error, :incompatible_avro_schema}`: the schema does not match map contents
+  - `{:error, :field_not_found}`: if map field missing from schema
 
   If the schema is not compatible with the map contents it raises an exception.
 
@@ -204,12 +207,12 @@ defmodule FastAvro do
         },
         new_schema
       )
-      <<176, 22, 38, 50, 48, 50, 51, 45, 48, 49, 45, 50, 53, 32, 48, 48, 58,
+      {:ok, <<176, 22, 38, 50, 48, 50, 51, 45, 48, 49, 45, 50, 53, 32, 48, 48, 58,
       52, 53, 58, 53, 50, 38, 50, 48, 50, 51, 45, 48, 49, 45, 50, 53, 32, 48,
-      49, 58, 48, 48, 58, 48, 48>>
+      49, 58, 48, 48, 58, 48, 48>>}
 
   """
-  @spec encode_avro_datum(map, schema) :: binary
+  @spec encode_avro_datum(map, schema) :: {:ok, binary} | {:error, atom}
   def encode_avro_datum(_avro_map, _schema), do: error()
 
   @doc """
@@ -222,15 +225,14 @@ defmodule FastAvro do
 
   ## Returns
 
-  An elixir term representing the value of the field in the avro record.
-
-  If the field does not exist in the avro record you get :field_not_found.
-  If the refence is not an avro record you get :not_a_record
+  - `{:ok, term}`: term representing the value of the field in the avro record
+  - `{:error, :field_not_found}`: If the field does not exist in the avro record
+  - `{:error, :not_a_record}`: If the binary is not an avro record
 
   ## Examples
 
       iex> FastAvro.get_avro_value(msg, "Dest_TAC")
-      "TAC: 1142"
+      {:ok, "TAC: 1142"}
   """
   @spec get_avro_value(avro_record, String.t()) :: term
   def get_avro_value(_msg, _name), do: error()
@@ -246,16 +248,15 @@ defmodule FastAvro do
 
   ## Returns
 
-  An elixir term representing the value of the field in the avro record.
-
-  If the field does not exist in the avro record you get :field_not_found.
-  If the binary is not an avro record you get :not_a_record
-  If the schema is not compatible with the binary you get :incompatible_avro_schema
+  - `{:ok, term}`: term representing the value of the field in the avro record
+  - `{:error, :field_not_found}`: If the field does not exist in the avro record
+  - `{:error, :not_a_record}`: If the binary is not an avro record
+  - `{:error, :incompatible_avro_schema}`: If the schema is not compatible with the binary
 
   ## Examples
 
       iex> FastAvro.get_raw_value(avro_binary, "Dest_TAC")
-      "TAC: 1142"
+      {:ok, "TAC: 1142"}
   """
   @spec get_raw_value(binary, schema, String.t()) :: term
   def get_raw_value(_avro_binary, _schema, _name), do: error()
@@ -278,16 +279,18 @@ defmodule FastAvro do
 
   ## Examples
 
-    iex> FastAvro.get_raw_values(avro_data, schema, [
-      "Dest_TAC",
-      "Event_Start",
-      "Event_Stop"
-    ])
-    %{
-      "Dest_TAC" => "TAC: 1142",
-      "Event_Start" => "20200914 18:03:03.174",
-      "Event_Stop" => "20200914 18:03:03.224"
-    }
+  ```
+  iex> FastAvro.get_raw_values(avro_data, schema, [
+    "Dest_TAC",
+    "Event_Start",
+    "Event_Stop"
+  ])
+  %{
+    "Dest_TAC" => "TAC: 1142",
+    "Event_Start" => "20200914 18:03:03.174",
+    "Event_Stop" => "20200914 18:03:03.224"
+  }
+  ```
   """
   @spec get_raw_values(binary, schema, [String.t()]) :: map
   def get_raw_values(_avro_binary, _schm, _names), do: error()

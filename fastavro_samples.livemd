@@ -93,9 +93,24 @@ avro_data
   {"Event_Stop", <<_::binary-size(9), v::binary>>} -> {"to", v}
 end)
 |> FastAvro.encode_avro_datum(new_schema)
+|> elem(1)
 |> FastAvro.decode_avro_datum(new_schema)
 |> elem(1)
 |> FastAvro.to_map()
+```
+
+```elixir
+with map <- FastAvro.get_raw_values(avro_data, schema, ["Dest_TAC", "Event_Start", "Event_Stop"]),
+     new_map <-
+       Map.new(map, fn
+         {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
+         {"Event_Start", <<_::binary-size(9), v::binary>>} -> {"from", v}
+         {"Event_Stop", <<_::binary-size(9), v::binary>>} -> {"to", v}
+       end),
+     {:ok, encoded} <- FastAvro.encode_avro_datum(new_map, new_schema),
+     {:ok, decoded} <- FastAvro.decode_avro_datum(encoded, new_schema) do
+  FastAvro.to_map(decoded)
+end
 ```
 
 ```elixir
@@ -182,7 +197,7 @@ msg = %{
   "second_string" => "otra"
 }
 
-avro_msg = FastAvro.encode_avro_datum(msg, avro_schema)
+{:ok, avro_msg} = FastAvro.encode_avro_datum(msg, avro_schema)
 ```
 
 ```elixir

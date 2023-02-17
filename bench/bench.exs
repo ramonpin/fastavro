@@ -1,8 +1,8 @@
 defmodule Benches do
   def get() do
-    {:ok, schm} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
-    data = File.read!("bench/lte_202210.avro")
-    msg = FastAvro.decode_avro_datum(schm, data)
+    {:ok, schema} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
+    {:ok, data = File.read!("bench/lte_202210.avro")}
+    msg = FastAvro.decode_avro_datum(schema, data)
 
     Benchee.run(
       %{
@@ -19,19 +19,20 @@ defmodule Benches do
   end
 
   def raw_get do
-    {:ok, schm} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
+    {:ok, schema} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
     data = File.read!("bench/lte_202210.avro")
 
     Benchee.run(
       %{
         "avro" => fn ->
-          schm
-          |> FastAvro.decode_avro_datum(data)
+          data
+          |> FastAvro.decode_avro_datum(schema)
+          |> elem(1)
           |> FastAvro.get_avro_value("Event_Stop")
         end,
         "raw" => fn ->
-          schm
-          |> FastAvro.get_raw_value(data, "Event_Stop")
+          data
+          |> FastAvro.get_raw_value(schema, "Event_Stop")
         end
       },
       warmup: 2,
@@ -65,8 +66,9 @@ defmodule Benches do
     Benchee.run(
       %{
         "raw" => fn ->
-          schema
-          |> FastAvro.decode_avro_datum(data)
+          data
+          |> FastAvro.decode_avro_datum(schema)
+          |> elem(1)
           |> FastAvro.to_map()
         end
       },
@@ -86,13 +88,13 @@ defmodule Benches do
       %{
         "get raw value three times" => fn ->
           [
-            FastAvro.get_raw_value(schema, data, "Event_Start"),
-            FastAvro.get_raw_value(schema, data, "Event_Stop"),
-            FastAvro.get_raw_value(schema, data, "RNC_id")
+            FastAvro.get_raw_value(data, schema, "Event_Start"),
+            FastAvro.get_raw_value(data, schema, "Event_Stop"),
+            FastAvro.get_raw_value(data, schema, "RNC_id")
           ]
         end,
         "get avro value three times" => fn ->
-          msg = FastAvro.decode_avro_datum(schema, data)
+          {:ok, msg} = FastAvro.decode_avro_datum(data, schema)
 
           [
             FastAvro.get_avro_value(msg, "Event_Start"),
@@ -101,7 +103,7 @@ defmodule Benches do
           ]
         end,
         "get three raw values" => fn ->
-          FastAvro.get_raw_values(schema, data, ["Event_Start", "Event_Stop", "RNC_id"])
+          FastAvro.get_raw_values(data, schema, ["Event_Start", "Event_Stop", "RNC_id"])
         end
       },
       warmup: 2,
@@ -112,31 +114,26 @@ defmodule Benches do
     nil
   end
 
-  def get_one_value do
+  def get_one_value(n) when is_integer(n) do
     {:ok, schema} = File.read!("bench/lte_202210.avsc") |> FastAvro.read_schema()
     data = File.read!("bench/lte_202210.avro")
 
     Benchee.run(
       %{
         "get raw value" => fn ->
-          [
-            FastAvro.get_raw_value(schema, data, "Event_Stop")
-          ]
+          FastAvro.get_raw_value(data, schema, "Event_Stop")
         end,
         "get avro value" => fn ->
-          msg = FastAvro.decode_avro_datum(schema, data)
-
-          [
-            FastAvro.get_avro_value(msg, "Event_Stop")
-          ]
+          {:ok, msg} = FastAvro.decode_avro_datum(data, schema)
+          FastAvro.get_avro_value(msg, "Event_Stop")
         end,
         "get one with raw values" => fn ->
-          FastAvro.get_raw_values(schema, data, ["Event_Stop"])
+          FastAvro.get_raw_values(data, schema, ["Event_Stop"])
         end
       },
       warmup: 2,
       time: 10,
-      parallel: 3
+      parallel: n
     )
 
     nil

@@ -1,9 +1,11 @@
 mod binary;
+mod record;
 
 use apache_avro::schema::RecordField;
 use apache_avro::types::{Record, Value};
-use apache_avro::{from_avro_datum, to_avro_datum, Reader, Schema, Writer};
+use apache_avro::{from_avro_datum, to_avro_datum, Schema};
 use binary::Bin;
+use record::RecordFieldAdder;
 use rustler::types::binary::Binary;
 use rustler::{Atom, Encoder, Env, Error, ResourceArc, Term};
 use std::collections::HashMap;
@@ -146,50 +148,6 @@ fn get_value_term<'a>(env: Env<'a>, value: &Value) -> Term<'a> {
 }
 
 #[rustler::nif]
-fn encode_msg(msg: HashMap<String, Term>, schema_resource: ResourceArc<SchemaResource>) -> Vec<u8> {
-    let schema = &schema_resource.schema;
-
-    let mut writer = Writer::new(&schema, Vec::new());
-    let mut record = Record::new(&schema).unwrap();
-    let fields = schema_map(&schema);
-
-    for (k, v) in msg {
-        match fields[&k] {
-            Schema::Long => record.put::<i64>(&k, v.decode().unwrap()),
-            Schema::Int => record.put::<i32>(&k, v.decode().unwrap()),
-            Schema::Double => record.put::<f64>(&k, v.decode().unwrap()),
-            Schema::String => record.put::<String>(&k, v.decode().unwrap()),
-            msg => panic!("Unkown type: {:?}", msg),
-        }
-    }
-    writer.append(record).unwrap();
-
-    let encoded = writer.into_inner().unwrap();
-
-    return encoded;
-}
-
-#[rustler::nif]
-fn decode_msg<'a>(
-    env: Env<'a>,
-    avro_data: Term,
-    schema_resource: ResourceArc<SchemaResource>,
-) -> HashMap<String, Term<'a>> {
-    let schema = &schema_resource.schema;
-
-    let bytes = avro_data.decode::<Binary>().unwrap().as_slice();
-    let mut reader = Reader::with_schema(&schema, bytes).unwrap();
-    let msg = reader.next().unwrap().unwrap();
-
-    let fields = match msg {
-        Value::Record(fields) => fields,
-        _ => panic!("Only avro records supported."),
-    };
-
-    return convert_to_hashmap(env, &fields);
-}
-
-#[rustler::nif]
 fn decode_avro_datum(
     avro_data: Term,
     schema_resource: ResourceArc<SchemaResource>,
@@ -213,24 +171,27 @@ fn decode_avro_datum(
 fn encode_avro_datum<'a>(
     avro_map: HashMap<String, Term>,
     schema_resource: ResourceArc<SchemaResource>,
-) -> Bin {
+) -> Result<(Atom, Bin), Error> {
     let schema = &schema_resource.schema;
     let mut record = Record::new(schema).unwrap();
     let fields = schema_map(schema);
 
     for (k, v) in avro_map {
-        match fields[&k] {
-            Schema::Int => record.put::<i32>(&k, v.decode().unwrap()),
-            Schema::Long => record.put::<i64>(&k, v.decode().unwrap()),
-            Schema::Double => record.put::<f64>(&k, v.decode().unwrap()),
-            Schema::String => record.put::<String>(&k, v.decode().unwrap()),
-            _ => panic!("Unkown type"),
+        if fields.contains_key(&k) {
+            match (*fields[&k]).add(&mut record, &k, v) {
+                Ok(_) => (),
+                Err(_error) => return error_result(atoms::incompatible_avro_schema()),
+            }
+        } else {
+            return error_result(atoms::field_not_found());
         }
     }
 
-    let encoded_avro = to_avro_datum(schema, record).unwrap();
-
-    return Bin::new(encoded_avro);
+    let encoded_avro_result = to_avro_datum(schema, record);
+    match encoded_avro_result {
+        Ok(encoded_avro) => return ok_result(Bin::new(encoded_avro)),
+        Err(_) => return error_result(atoms::incompatible_avro_schema()),
+    }
 }
 
 #[rustler::nif]
@@ -238,20 +199,20 @@ fn get_avro_value<'a>(
     env: Env<'a>,
     msg_resource: ResourceArc<MsgResource>,
     name: String,
-) -> Term<'a> {
+) -> Result<(Atom, Term<'a>), Error> {
     let msg = &msg_resource.msg;
 
     match msg {
         Value::Record(fields) => {
             for (field_name, value) in fields {
                 if field_name.to_string() == name {
-                    return get_value_term(env, value);
+                    return ok_result(get_value_term(env, value));
                 }
             }
-            return atoms::field_not_found().encode(env);
+            return error_result(atoms::field_not_found());
         }
 
-        _ => return atoms::not_a_record().encode(env),
+        _ => return error_result(atoms::not_a_record()),
     }
 }
 
@@ -261,7 +222,7 @@ fn get_raw_value<'a>(
     avro_data: Term,
     schema_resource: ResourceArc<SchemaResource>,
     name: String,
-) -> Term<'a> {
+) -> Result<(Atom, Term<'a>), Error> {
     let schema = &schema_resource.schema;
     let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
     let datum = from_avro_datum(schema, &mut bytes, Some(schema));
@@ -271,17 +232,17 @@ fn get_raw_value<'a>(
             Value::Record(fields) => {
                 for (field_name, value) in fields {
                     if field_name.to_string() == name {
-                        return get_value_term(env, &value);
+                        return ok_result(get_value_term(env, &value));
                     }
                 }
-                return atoms::field_not_found().encode(env);
+                return error_result(atoms::field_not_found());
             }
 
-            _ => return atoms::not_a_record().encode(env),
+            _ => return error_result(atoms::not_a_record()),
         },
 
         Err(_) => {
-            return atoms::incompatible_avro_schema().encode(env);
+            return error_result(atoms::incompatible_avro_schema());
         }
     }
 }
