@@ -17,6 +17,7 @@ type ResultResource<T> = Result<SuccessResource<T>, Error>;
 mod atoms {
     rustler::atoms! {
         ok,
+        all_data_not_read,
         bad_avro_schema,
         field_not_found,
         incompatible_avro_schema,
@@ -157,6 +158,10 @@ fn decode_avro_datum(
 
     let datum = from_avro_datum(schema, &mut bytes, Some(schema));
 
+    if !bytes.is_empty() {
+        return error_result(atoms::all_data_not_read());
+    }
+
     match datum {
         Ok(value) => {
             let avro_msg = ResourceArc::new(MsgResource { msg: value });
@@ -226,6 +231,10 @@ fn get_raw_value<'a>(
     let schema = &schema_resource.schema;
     let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
     let datum = from_avro_datum(schema, &mut bytes, Some(schema));
+
+    if !bytes.is_empty() {
+        return error_result(atoms::all_data_not_read());
+    }
 
     match datum {
         Ok(value) => match value {
