@@ -61,7 +61,7 @@ defmodule FastavroTest do
     {:ok, avro_record} = FastAvro.decode_avro_datum(@avro_person, schema)
 
     assert {:ok, "luis"} = FastAvro.get_avro_value(avro_record, "name")
-    assert {:ok, 25} = FastAvro.get_avro_value(avro_record, "age") 
+    assert {:ok, 25} = FastAvro.get_avro_value(avro_record, "age")
     assert {:ok, 7.5} = FastAvro.get_avro_value(avro_record, "score")
     assert {:error, :field_not_found} = FastAvro.get_avro_value(avro_record, "wrong")
   end
@@ -88,20 +88,22 @@ defmodule FastavroTest do
     {:ok, new_schema} = FastAvro.read_schema(@person_new_schema)
 
     new_avro_person =
-      @avro_person
-      |> FastAvro.get_raw_values(schema, [
-        "age",
-        "score"
-      ])
-      |> Map.new(fn
-        {"age", v} -> {"years", 1970 + v}
-        {"score", v} -> {"score_normalized", trunc(v * 10)}
-      end)
-      |> FastAvro.encode_avro_datum(new_schema)
-      |> elem(1)
-      |> FastAvro.decode_avro_datum(new_schema)
-      |> elem(1)
-      |> FastAvro.to_map()
+      with avro_person <-
+             FastAvro.get_raw_values(@avro_person, schema, [
+               "age",
+               "score"
+             ]),
+           new_person_map <-
+             Map.new(avro_person, fn
+               {"age", v} -> {"years", 1970 + v}
+               {"score", v} -> {"score_normalized", trunc(v * 10)}
+             end),
+           {:ok, encoded} <- FastAvro.encode_avro_datum(new_person_map, new_schema),
+           {:ok, decoded} <- FastAvro.decode_avro_datum(encoded, new_schema) do
+          FastAvro.to_map(decoded)
+      else
+          _ -> :error
+      end
 
     assert new_avro_person == %{"years" => 1995, "score_normalized" => 75}
   end
