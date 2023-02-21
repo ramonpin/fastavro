@@ -30,7 +30,7 @@ defmodule FastavroNotAllDataReadTest do
     "score" => 7.5
   }
 
-  setup do
+  setup_all do
     {:ok, long_schema} = FastAvro.read_schema(@long_schema)
     {:ok, short_schema} = FastAvro.read_schema(@short_schema)
     {:ok, long_person} = FastAvro.encode_avro_datum(@long_person, long_schema)

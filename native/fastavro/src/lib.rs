@@ -262,12 +262,13 @@ fn get_raw_values<'a>(
     avro_data: Term,
     schema_resource: ResourceArc<SchemaResource>,
     names: Vec<String>,
-) -> HashMap<String, Term<'a>> {
+) -> Result<(Atom, HashMap<String, Term<'a>>), Error> {
     let schema = &schema_resource.schema;
     let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
-    let value = from_avro_datum(schema, &mut bytes, None).unwrap();
 
+    let value = from_avro_datum(schema, &mut bytes, None).unwrap();
     let mut values: HashMap<String, Term> = HashMap::new();
+
     match value {
         Value::Record(fields) => {
             for (field_name, value) in fields {
@@ -275,12 +276,20 @@ fn get_raw_values<'a>(
                     values.insert(field_name, get_value_term(env, &value));
                 }
             }
+
+            let mut found_fields: Vec<String> = Vec::new();
+            found_fields.extend(values.clone().into_keys());
+            for field_name in names {
+                if !found_fields.contains(&field_name) {
+                    return error_result(atoms::field_not_found());
+                }
+            }
+
+            return ok_result(values);
         }
 
-        _ => panic!("Only records supported"),
+        _ => error_result(atoms::not_a_record()),
     }
-
-    return values;
 }
 
 // Declare Nifs to export

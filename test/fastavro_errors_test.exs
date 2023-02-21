@@ -33,7 +33,7 @@ defmodule FastavroErrorsTest do
 
   @avro_person <<8, 108, 117, 105, 115, 50, 0, 0, 0, 0, 0, 0, 30, 64>>
 
-  setup do
+  setup_all do
     {:ok, incompatible_person_schema} = FastAvro.read_schema(@incompatible_person_schema)
     {:ok, person_schema} = FastAvro.read_schema(@person_schema)
 
@@ -89,5 +89,11 @@ defmodule FastavroErrorsTest do
     person_schema: schema
   } do
     assert {:error, :field_not_found} = FastAvro.get_raw_value(@avro_person, schema, "wrong")
+  end
+
+  test "get raw values should return :field_not_found for unknown fields", %{
+    person_schema: schema
+  } do
+    assert {:error, :field_not_found} == FastAvro.get_raw_values(@avro_person, schema, ["name", "wrong", "age"])
   end
 end
