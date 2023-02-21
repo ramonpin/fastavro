@@ -38,7 +38,7 @@ by adding `fastavro` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:fastavro, "~> 0.2.1"}
+    {:fastavro, "~> 0.3.0"}
   ]
 end
 ```
