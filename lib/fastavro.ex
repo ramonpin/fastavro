@@ -167,7 +167,8 @@ defmodule FastAvro do
   ## Returns
 
   - `{:ok, avro_record()}`: when successfully decoded
-  - `{:error, :incompatible_avro_schema}`: when schema not valid to decode data.
+  - `{:error, :incompatible_avro_schema}`: when schema not valid to decode data
+  - `{:error, :all_data_not_read}`: if the decode has not read all the binary
 
   ## Examples
 
@@ -194,8 +195,6 @@ defmodule FastAvro do
   - `{:error, :wrong_type}`: the schema contains an unsupported data type
   - `{:error, :incompatible_avro_schema}`: the schema does not match map contents
   - `{:error, :field_not_found}`: if map field missing from schema
-
-  If the schema is not compatible with the map contents it raises an exception.
 
   ## Examples
 
@@ -242,7 +241,7 @@ defmodule FastAvro do
 
   ## Parameters
 
-  - `avro_binary`: valid avro data as a binary
+  - `binary`: valid avro data as a binary
   - `schema`: a `schema()` reference compatible with that avro data.
   - `name`: the field name to consult as a string
 
@@ -252,6 +251,7 @@ defmodule FastAvro do
   - `{:error, :field_not_found}`: If the field does not exist in the avro record
   - `{:error, :not_a_record}`: If the binary is not an avro record
   - `{:error, :incompatible_avro_schema}`: If the schema is not compatible with the binary
+  - `{:error, :all_data_not_read}`: if the decode has not read all the binary
 
   ## Examples
 
