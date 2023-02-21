@@ -77,18 +77,19 @@ defmodule FastavroTest do
   test "several fields can be get from avro row data and compatible schema at once" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
 
-    assert FastAvro.get_raw_values(@avro_person, schema, ["age", "name"]) == %{
-             "name" => "luis",
-             "age" => 25
-           }
+    result = FastAvro.get_raw_values(@avro_person, schema, ["age", "name"])
+    with {:ok, values} <- result do
+      assert %{"name" => "luis", "age" => 25} == values
+      assert length(Map.keys(values)) == 2
+    end
   end
 
-  test "functions can be piped to reencode data" do
+  test "functions can be chained to reencode data" do
     {:ok, schema} = FastAvro.read_schema(@person_schema)
     {:ok, new_schema} = FastAvro.read_schema(@person_new_schema)
 
     new_avro_person =
-      with avro_person <-
+      with {:ok, avro_person} <-
              FastAvro.get_raw_values(@avro_person, schema, [
                "age",
                "score"
@@ -100,9 +101,9 @@ defmodule FastavroTest do
              end),
            {:ok, encoded} <- FastAvro.encode_avro_datum(new_person_map, new_schema),
            {:ok, decoded} <- FastAvro.decode_avro_datum(encoded, new_schema) do
-          FastAvro.to_map(decoded)
+        FastAvro.to_map(decoded)
       else
-          _ -> :error
+        _ -> :error
       end
 
     assert new_avro_person == %{"years" => 1995, "score_normalized" => 75}

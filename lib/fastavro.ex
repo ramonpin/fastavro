@@ -233,7 +233,7 @@ defmodule FastAvro do
       iex> FastAvro.get_avro_value(msg, "Dest_TAC")
       {:ok, "TAC: 1142"}
   """
-  @spec get_avro_value(avro_record, String.t()) :: term
+  @spec get_avro_value(avro_record, String.t()) :: {:ok, term} | {:error, atom}
   def get_avro_value(_msg, _name), do: error()
 
   @doc """
@@ -258,7 +258,7 @@ defmodule FastAvro do
       iex> FastAvro.get_raw_value(avro_binary, "Dest_TAC")
       {:ok, "TAC: 1142"}
   """
-  @spec get_raw_value(binary, schema, String.t()) :: term
+  @spec get_raw_value(binary, schema, String.t()) :: {:ok, term} | {:error, atom}
   def get_raw_value(_avro_binary, _schema, _name), do: error()
 
   @doc """
@@ -273,7 +273,9 @@ defmodule FastAvro do
 
   ## Returns
 
-  An elixir term representing the value of the field in the avro record.
+  - `{:ok, map}`: a map with field names and values extracted from avro_binary 
+  - `{:error, :not_a_record}`: if avro_binary is not an avro record
+  - `{:error, :field_not_found}`: if a name in names is not in the schema
 
   If the field does not exists in the avro record you get :field_not_found.
 
@@ -285,14 +287,14 @@ defmodule FastAvro do
     "Event_Start",
     "Event_Stop"
   ])
-  %{
+  {:ok, %{
     "Dest_TAC" => "TAC: 1142",
     "Event_Start" => "20200914 18:03:03.174",
     "Event_Stop" => "20200914 18:03:03.224"
   }
   ```
   """
-  @spec get_raw_values(binary, schema, [String.t()]) :: map
+  @spec get_raw_values(binary, schema, [String.t()]) :: {:ok, map} | {:error, atom}
   def get_raw_values(_avro_binary, _schm, _names), do: error()
 
   defp error(), do: :erlang.nif_error(:nif_not_loaded)

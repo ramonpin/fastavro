@@ -87,6 +87,7 @@ avro_data
   "Event_Start",
   "Event_Stop"
 ])
+|> elem(1)
 |> Map.new(fn
   {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
   {"Event_Start", <<_::binary-size(9), v::binary>>} -> {"from", v}
@@ -100,7 +101,8 @@ end)
 ```
 
 ```elixir
-with map <- FastAvro.get_raw_values(avro_data, schema, ["Dest_TAC", "Event_Start", "Event_Stop"]),
+with {:ok, map} <-
+       FastAvro.get_raw_values(avro_data, schema, ["Dest_TAC", "Event_Start", "Event_Stop"]),
      new_map <-
        Map.new(map, fn
          {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
@@ -118,6 +120,7 @@ defmodule Tests do
   def recode(avro_data, schema, new_schema) do
     avro_data
     |> FastAvro.get_raw_values(schema, ["Dest_TAC", "Event_Start", "Event_Stop"])
+    |> elem(1)
     |> Map.new(fn
       {"Dest_TAC", "TAC: " <> v} -> {"tac", String.to_integer(v)}
       {"Event_Start", <<_::binary-size(9), v::binary>>} -> {"from", v}
