@@ -1,5 +1,8 @@
 # Fastavro
 
+[![hex.pm badge](https://img.shields.io/badge/Package%20on%20hex.pm-informational)](https://hex.pm/packages/fastavro)
+[![Documentation badge](https://img.shields.io/badge/Documentation-ff69b4)](https://hexdocs.pm/fastavro)
+
 This library implements some fast avro access functions to be used in conjuction
 with avro_ex or schema_avro libraries.
 
@@ -43,7 +46,5 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/fastavro>.
+Documentation can be found at <https://hexdocs.pm/fastavro>.
 
