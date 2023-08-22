@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.3.2] - 2023-08-22
+
+### Features
+
+- Allow LF terminated avro fragments to be read
+
+### Refactor
+
+- Properly rename the test modules
+
 ## [0.3.1] - 2023-02-27
 
 ### Bug Fixes
@@ -38,4 +49,3 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous Tasks
 
 - Increase formatter line length to 120
-

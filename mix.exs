@@ -4,7 +4,7 @@ defmodule FastAvro.MixProject do
   def project do
     [
       app: :fastavro,
-      version: "0.3.1",
+      version: "0.3.2",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -42,7 +42,7 @@ defmodule FastAvro.MixProject do
   defp description do
     """
     This library implements some fast avro access functions using a wrapper
-    over the apache_avro rust libary. Is not a generic use avro library it
+    over the apache_avro rust library. Is not a generic use avro library it
     just fulfills some use cases.
     """
   end
