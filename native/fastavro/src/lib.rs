@@ -10,6 +10,9 @@ use rustler::types::binary::Binary;
 use rustler::{Atom, Encoder, Env, Error, ResourceArc, Term};
 use std::collections::HashMap;
 
+// LineFeed ascii code
+const ASCII_LF: u8 = 10;
+
 // type Success<T> = (Atom, T);
 type SuccessResource<T> = (Atom, ResourceArc<T>);
 type ResultResource<T> = Result<SuccessResource<T>, Error>;
@@ -158,7 +161,8 @@ fn decode_avro_datum(
 
     let datum = from_avro_datum(schema, &mut bytes, Some(schema));
 
-    if !bytes.is_empty() {
+    // Skip error when remaining bytes is just a LineFeed
+    if !(bytes.is_empty() || bytes == [ASCII_LF]) {
         return error_result(atoms::all_data_not_read());
     }
 
@@ -232,7 +236,8 @@ fn get_raw_value<'a>(
     let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
     let datum = from_avro_datum(schema, &mut bytes, Some(schema));
 
-    if !bytes.is_empty() {
+    // Skip error when remaining bytes is just a LineFeed
+    if !(bytes.is_empty() || bytes == [ASCII_LF]) {
         return error_result(atoms::all_data_not_read());
     }
 
