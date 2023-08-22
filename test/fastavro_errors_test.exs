@@ -1,4 +1,4 @@
-defmodule FastavroErrorsTest do
+defmodule FastAvroErrorsTest do
   use ExUnit.Case
 
   @incompatible_person_schema """

@@ -1,4 +1,4 @@
-defmodule FastavroNotAllDataReadTest do
+defmodule FastAvroNotAllDataReadTest do
   use ExUnit.Case
 
   @long_schema """

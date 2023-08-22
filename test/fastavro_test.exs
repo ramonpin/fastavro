@@ -1,4 +1,4 @@
-defmodule FastavroTest do
+defmodule FastAvroTest do
   use ExUnit.Case
 
   @person_schema """
