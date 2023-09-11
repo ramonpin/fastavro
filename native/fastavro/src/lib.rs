@@ -204,6 +204,21 @@ fn encode_avro_datum<'a>(
 }
 
 #[rustler::nif]
+fn normalized_avro_datum<'a>(
+    msg_resource: ResourceArc<MsgResource>,
+    schema_resource: ResourceArc<SchemaResource>,
+) -> Result<(Atom, Bin), Error> {
+    let schema = &schema_resource.schema;
+    let msg = msg_resource.msg.clone();
+
+    let msg_normalized = to_avro_datum(schema, msg);
+    match msg_normalized {
+        Ok(encoded_avro) => return ok_result(Bin::new(encoded_avro)),
+        Err(_) => return error_result(atoms::incompatible_avro_schema()),
+    }
+}
+
+#[rustler::nif]
 fn get_avro_value<'a>(
     env: Env<'a>,
     msg_resource: ResourceArc<MsgResource>,
@@ -262,6 +277,43 @@ fn get_raw_value<'a>(
 }
 
 #[rustler::nif]
+fn normalize_and_get_raw_value<'a>(
+    env: Env<'a>,
+    avro_data: Term,
+    schema_resource: ResourceArc<SchemaResource>,
+    name: String,
+) -> Result<(Atom, (Term<'a>, Bin)), Error> {
+    let schema = &schema_resource.schema;
+
+    let mut bytes = avro_data.decode::<Binary>().unwrap().as_slice();
+    let avro_datum = from_avro_datum(schema, &mut bytes, Some(schema));
+
+    let msg = match avro_datum {
+        Ok(decoded_avro) => decoded_avro,
+        Err(_) => return error_result(atoms::incompatible_avro_schema()),
+    };
+
+    let msg_borrow = msg.clone();
+
+    let msg_normalized = match to_avro_datum(schema, msg) {
+        Ok(encoded_avro) => encoded_avro,
+        Err(_) => return error_result(atoms::incompatible_avro_schema()),
+    };
+
+    match msg_borrow {
+        Value::Record(fields) => {
+            for (field_name, value) in fields {
+                if field_name.to_string() == name {
+                    return ok_result((get_value_term(env, &value), Bin::new(msg_normalized)));
+                }
+            }
+            return error_result(atoms::field_not_found());
+        }
+        _ => return error_result(atoms::not_a_record()),
+    };
+}
+
+#[rustler::nif]
 fn get_raw_values<'a>(
     env: Env<'a>,
     avro_data: Term,
@@ -307,6 +359,8 @@ rustler::init!(
         get_avro_value,
         get_raw_value,
         get_raw_values,
+        normalize_and_get_raw_value,
+        normalized_avro_datum,
         read_schema,
         schema_fields,
         to_map,

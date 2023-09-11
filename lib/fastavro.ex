@@ -113,7 +113,7 @@ defmodule FastAvro do
 
   - `{:ok, avro_record}`: an `avro_record()` reference already populated and ready
     to be encoded.
-  - `{:error, :wrong_type}`: if the schema contains an unknown data type. 
+  - `{:error, :wrong_type}`: if the schema contains an unknown data type.
 
   ## Examples
 
@@ -177,6 +177,30 @@ defmodule FastAvro do
   """
   @spec decode_avro_datum(binary, schema) :: {:ok, avro_record} | {:error, atom}
   def decode_avro_datum(_avro_data, _schema), do: error()
+
+  @doc """
+  Decodes and normalize avro data given as a binary using the provided schema. It 
+  decodes only raw data without any headers, no schema and no fingerprint.
+
+  ## Parameters
+
+  - `binary`: valid avro data as a binary
+  - `schema`: a `schema()` reference for a record definition compatible with the
+    data.
+
+  ## Returns
+
+  - `{:ok, avro_record()}`: when successfully decoded
+  - `{:error, :incompatible_avro_schema}`: when schema not valid to decode data
+  - `{:error, :all_data_not_read}`: if the decode has not read all the binary
+
+  ## Examples
+
+      iex> FastAvro.FastAvro.normalized_avro_datum(avro_data, schema)
+      {:ok, #Reference<0.2887345315.2965241864.83696>}
+  """
+  @spec normalized_avro_datum(binary, schema) :: {:ok, avro_record} | {:error, atom}
+  def normalized_avro_datum(_avro_data, _schema), do: error()
 
   @doc """
   Encodes avro data from a map using the provided schema. It raw encodes
@@ -262,6 +286,33 @@ defmodule FastAvro do
   def get_raw_value(_avro_binary, _schema, _name), do: error()
 
   @doc """
+  Gets the value associated to a field name from given avro data and schema and
+  normalize the avro data so any unneeded bytes get removed. 
+
+  ## Parameters
+
+  - `binary`: avro data to be read and normalized as a binary
+  - `schema`: a `schema()` reference compatible with that avro data.
+  - `name`: the field name to consult as a string
+
+  ## Returns
+
+  - `{:ok, {term, binary}}`: a tuple with the term representing the value of the field in 
+     the avro record and the normalized binary for that record.
+  - `{:error, :field_not_found}`: If the field does not exist in the avro record
+  - `{:error, :not_a_record}`: If the binary is not an avro record
+  - `{:error, :incompatible_avro_schema}`: If the schema is not compatible with the binary
+  - `{:error, :all_data_not_read}`: if the decode has not read all the binary
+
+  ## Examples
+
+      iex> FastAvro.normalize_and_get_raw_value(avro_binary, "Dest_TAC")
+      {:ok, {"TAC: 1142", <<...>>}}
+  """
+  @spec normalize_and_get_raw_value(binary, schema, String.t()) :: {:ok, {term, binary}} | {:error, atom}
+  def normalize_and_get_raw_value(_avro_binary, _schema, _name), do: error()
+
+  @doc """
   Gets the values associated with a list of field names from given avro data
   and schema.
 
@@ -273,7 +324,7 @@ defmodule FastAvro do
 
   ## Returns
 
-  - `{:ok, map}`: a map with field names and values extracted from avro_binary 
+  - `{:ok, map}`: a map with field names and values extracted from avro_binary
   - `{:error, :not_a_record}`: if avro_binary is not an avro record
   - `{:error, :field_not_found}`: if a name in names is not in the schema
 
