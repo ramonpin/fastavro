@@ -1,6 +1,6 @@
 [package]
 name = "fastavro"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["ramonpin"]
 edition = "2021"
 
@@ -10,7 +10,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = "0.32.1"
+rustler = { version = "0.32.1", features = ["nif_version_2_17"] }
 
 [dependencies.apache-avro]
 version = "0.14.0"

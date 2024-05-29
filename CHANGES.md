@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2024-05-29
+
+### Features
+
+- Make rustler generate code for otp26 (nif_version_2_17)
+
 ## [0.4.0] - 2024-05-28
 
 ### Features
