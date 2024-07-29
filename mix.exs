@@ -4,7 +4,7 @@ defmodule FastAvro.MixProject do
   def project do
     [
       app: :fastavro,
-      version: "0.5.0",
+      version: "0.5.1",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -32,7 +32,8 @@ defmodule FastAvro.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.32.1"},
+      {:rustler, "~> 0.32.1", optional: true},
+      {:rustler_precompiled, "~> 0.7.1"},
       {:jason, "~> 1.4"},
       {:benchee, "~> 1.1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.29.1", only: [:dev, :test], runtime: false}
@@ -54,7 +55,8 @@ defmodule FastAvro.MixProject do
         "mix.exs",
         "README*",
         "LICENSE*",
-        "native"
+        "native",
+        "checksum-*.exs"
       ],
       maintainers: ["Ramón Pin"],
       licenses: ["MIT"],

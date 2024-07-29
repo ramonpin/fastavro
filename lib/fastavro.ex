@@ -33,7 +33,13 @@ defmodule FastAvro do
   ```
   """
 
-  use Rustler, otp_app: :fastavro, crate: "fastavro"
+  use RustlerPrecompiled,
+    otp_app: :fastavro,
+    crate: :fastavro,
+    base_url: "https://github.com/ramonpin/fastavro/releases/download/v0.5.1",
+    version: "0.5.1",
+    target: ["x86_64-unknown-linux-gnu"],
+    nif_versions: ["2.17"]
 
   @typedoc """
   Is a precompiled and validated avro schema
