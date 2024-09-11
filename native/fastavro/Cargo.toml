@@ -1,6 +1,6 @@
 [package]
 name = "fastavro"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["ramonpin"]
 edition = "2021"
 

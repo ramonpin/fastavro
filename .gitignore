@@ -1,5 +1,6 @@
 # Compiled rust NIFs
 /priv/native
+checksum-Elixir.FastAvro.exs
 
 # The directory Mix will write compiled artifacts to.
 /_build/
