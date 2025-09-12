@@ -13,5 +13,5 @@ crate-type = ["cdylib"]
 rustler = { version = "0.32.1", features = ["nif_version_2_17"] }
 
 [dependencies.apache-avro]
-version = "0.14.0"
+version = "0.20.0"
 features = ["snappy"]

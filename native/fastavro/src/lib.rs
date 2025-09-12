@@ -1,9 +1,11 @@
 mod binary;
 mod record;
 
-use apache_avro::schema::RecordField;
-use apache_avro::types::{Record, Value};
-use apache_avro::{from_avro_datum, to_avro_datum, Schema};
+use apache_avro::{
+    from_avro_datum, to_avro_datum,
+    types::{Record, Value},
+    Schema,
+};
 use binary::Bin;
 use record::RecordFieldAdder;
 use rustler::types::binary::Binary;
@@ -69,13 +71,13 @@ pub fn read_schema<'a>(schema_str: &str) -> ResultResource<SchemaResource> {
 
 fn schema_map(schema: &Schema) -> HashMap<String, &Schema> {
     let fields = match schema {
-        Schema::Record { fields, .. } => fields,
+        Schema::Record(record_schema) => &record_schema.fields,
         _ => panic!("Only avro records supported"),
     };
 
     let mut map_fields: HashMap<String, &Schema> = HashMap::new();
-    for RecordField { name, schema, .. } in fields {
-        map_fields.insert(name.to_string(), schema);
+    for field in fields {
+        map_fields.insert(field.name.clone(), &field.schema);
     }
 
     return map_fields;
@@ -84,13 +86,13 @@ fn schema_map(schema: &Schema) -> HashMap<String, &Schema> {
 #[rustler::nif]
 pub fn schema_fields(schema_resource: ResourceArc<SchemaResource>) -> HashMap<String, String> {
     let fields = match &schema_resource.schema {
-        Schema::Record { fields, .. } => fields,
+        Schema::Record(record_schema) => &record_schema.fields,
         _ => panic!("Only avro records supported"),
     };
 
     let mut map_fields: HashMap<String, String> = HashMap::new();
-    for RecordField { name, schema, .. } in fields {
-        map_fields.insert((*name).to_string(), format!("{:?}", *schema));
+    for field in fields {
+        map_fields.insert(field.name.clone(), format!("{:?}", field.schema));
     }
 
     return map_fields;
@@ -101,22 +103,25 @@ pub fn create_msg<'a>(
     map: HashMap<String, Term>,
     schema_resource: ResourceArc<SchemaResource>,
 ) -> ResultResource<MsgResource> {
-    let mut record = Record::new(&schema_resource.schema).unwrap();
-    let fields = schema_map(&schema_resource.schema);
+    let schema = &schema_resource.schema;
+    let mut record = Record::new(schema).unwrap();
+    let fields = schema_map(schema);
 
     for (k, v) in map {
-        match fields[&k] {
-            Schema::Int => record.put::<i64>(&k, v.decode().unwrap()),
-            Schema::Long => record.put::<i64>(&k, v.decode().unwrap()),
-            Schema::Double => record.put::<f64>(&k, v.decode().unwrap()),
-            Schema::String => record.put::<String>(&k, v.decode().unwrap()),
-            _ => return error_result(atoms::wrong_type()),
+        if let Some(field_schema) = fields.get(&k) {
+            if field_schema.add(&mut record, &k, v).is_err() {
+                return error_result(atoms::wrong_type());
+            }
+        } else {
+            return error_result(atoms::field_not_found());
         }
     }
 
-    let msg_resource = ResourceArc::new(MsgResource { msg: record.into() });
+    let msg_resource = ResourceArc::new(MsgResource {
+        msg: record.into(),
+    });
 
-    return ok_result(msg_resource);
+    ok_result(msg_resource)
 }
 
 fn convert_to_hashmap<'a>(env: Env<'a>, val: &Vec<(String, Value)>) -> HashMap<String, Term<'a>> {
@@ -143,11 +148,42 @@ pub fn to_map<'a>(
 
 fn get_value_term<'a>(env: Env<'a>, value: &Value) -> Term<'a> {
     match value {
-        Value::Long(num) => num.encode(env),
-        Value::Int(num) => num.encode(env),
-        Value::Double(num) => num.encode(env),
-        Value::String(string) => string.encode(env),
-        _ => atoms::wrong_type().encode(env),
+        Value::Null => ().encode(env),
+        Value::Boolean(b) => b.encode(env),
+        Value::Int(i) => i.encode(env),
+        Value::Long(l) => l.encode(env),
+        Value::Float(f) => f.encode(env),
+        Value::Double(d) => d.encode(env),
+        Value::Bytes(b) => b.encode(env),
+        Value::String(s) => s.encode(env),
+        Value::Fixed(_, bytes) => bytes.encode(env),
+        Value::Enum(_, symbol) => symbol.encode(env),
+        Value::Union(_, value) => get_value_term(env, value),
+        Value::Array(items) => {
+            let terms: Vec<Term> = items.iter().map(|item| get_value_term(env, item)).collect();
+            terms.encode(env)
+        }
+        Value::Map(map) => {
+            let mut term_map = HashMap::new();
+            for (k, v) in map {
+                term_map.insert(k.clone(), get_value_term(env, v));
+            }
+            term_map.encode(env)
+        }
+        Value::Record(fields) => convert_to_hashmap(env, fields).encode(env),
+        Value::Date(d) => d.encode(env),
+        Value::Decimal(d) => format!("{:?}", d).encode(env),
+        Value::BigDecimal(d) => d.to_string().encode(env),
+        Value::TimeMillis(t) => t.encode(env),
+        Value::TimeMicros(t) => t.encode(env),
+        Value::TimestampMillis(t) => t.encode(env),
+        Value::TimestampMicros(t) => t.encode(env),
+        Value::TimestampNanos(t) => t.encode(env),
+        Value::LocalTimestampMillis(t) => t.encode(env),
+        Value::LocalTimestampMicros(t) => t.encode(env),
+        Value::LocalTimestampNanos(t) => t.encode(env),
+        Value::Duration(d) => format!("{:?}", d).encode(env),
+        Value::Uuid(u) => u.to_string().encode(env),
     }
 }
 
